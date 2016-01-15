@@ -108,6 +108,8 @@ def get_training_roidb(imdb):
         print 'done'
 
     print 'Preparing training data...'
+    
+    ## these data are actual for training,  it will call lib/roi_data_layer/roidb.py, then use its prepara_roidb() function
     rdl_roidb.prepare_roidb(imdb)
     print 'done'
 

@@ -31,6 +31,7 @@ CLASSES = ('__background__',
            'motorbike', 'person', 'pottedplant',
            'sheep', 'sofa', 'train', 'tvmonitor')
 
+## these are trained-well fast RCNN models for doing detection(first is folder name, second is the file name)
 NETS = {'vgg16': ('VGG16',
                   'vgg16_fast_rcnn_iter_40000.caffemodel'),
         'vgg_cnn_m_1024': ('VGG_CNN_M_1024',
@@ -39,6 +40,9 @@ NETS = {'vgg16': ('VGG16',
                      'caffenet_fast_rcnn_iter_40000.caffemodel')}
 
 
+"""
+draw the bounding box of detected area for each class
+"""
 def vis_detections(im, class_name, dets, thresh=0.5):
     """Draw detected bounding boxes."""
     inds = np.where(dets[:, -1] >= thresh)[0]
@@ -71,10 +75,15 @@ def vis_detections(im, class_name, dets, thresh=0.5):
     plt.tight_layout()
     plt.draw()
 
+"""
+use the model(prototxt, model) to test the image, and we do only want the object defined in class
+for example, demo(net, "000051", ("car",)), means detect the car in the image 000051.jpg, we can 
+define multiple categories/classes in the classes.
+"""
 def demo(net, image_name, classes):
     """Detect object classes in an image using pre-computed object proposals."""
 
-    # Load pre-computed Selected Search object proposals
+    # Load pre-computed Selected Search object proposals (use pre-computed  proposal(selective search or ...)
     box_file = os.path.join(cfg.ROOT_DIR, 'data', 'demo',
                             image_name + '_boxes.mat')
     obj_proposals = sio.loadmat(box_file)['boxes']
@@ -86,6 +95,7 @@ def demo(net, image_name, classes):
     # Detect all object classes and regress object bounds
     timer = Timer()
     timer.tic()
+    # detect boxes with its scores, using the image(im) and the proposal(obj_proposals), with their model(net)
     scores, boxes = im_detect(net, im, obj_proposals)
     timer.toc()
     print ('Detection took {:.3f}s for '
@@ -94,8 +104,12 @@ def demo(net, image_name, classes):
     # Visualize detections for each class
     CONF_THRESH = 0.8
     NMS_THRESH = 0.3
+    print '###score, box', scores, boxes,
+    
+    # for each class, get all correct indexes, and the boxes, and scores
     for cls in classes:
         cls_ind = CLASSES.index(cls)
+        # each loop represent one class, and then there are many detected boxes(or none), get All of them
         cls_boxes = boxes[:, 4*cls_ind:4*(cls_ind + 1)]
         cls_scores = scores[:, cls_ind]
         keep = np.where(cls_scores >= CONF_THRESH)[0]
@@ -103,12 +117,17 @@ def demo(net, image_name, classes):
         cls_scores = cls_scores[keep]
         dets = np.hstack((cls_boxes,
                           cls_scores[:, np.newaxis])).astype(np.float32)
+        # non-maximum NMS????(why NMS and det?)
         keep = nms(dets, NMS_THRESH)
         dets = dets[keep, :]
         print 'All {} detections with p({} | box) >= {:.1f}'.format(cls, cls,
                                                                     CONF_THRESH)
+        # draw the bounding-box of the detected objects(for each class)
         vis_detections(im, cls, dets, thresh=CONF_THRESH)
 
+"""
+define your own parameter, here it will parse them in this sequence
+"""
 def parse_args():
     """Parse input arguments."""
     parser = argparse.ArgumentParser(description='Train a Fast R-CNN network')
@@ -124,6 +143,10 @@ def parse_args():
 
     return args
 
+"""
+run ./tools/demo.py, by default it will use vgg16 net, gpu=0, and test.prototxt
+otherwise use your own defined parameters
+"""
 if __name__ == '__main__':
     args = parse_args()
 
